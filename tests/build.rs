@@ -178,6 +178,12 @@ fn main() {
         .unwrap();
 
     prost_build::Config::new()
+        .arced("Outer.inner")
+        .arced("Outer.oneof_field.arc_inner")
+        .compile_protos(&[src.join("arced_field.proto")], includes)
+        .unwrap();
+
+    prost_build::Config::new()
         .compile_protos(&[src.join("oneof_name_conflict.proto")], includes)
         .unwrap();
 

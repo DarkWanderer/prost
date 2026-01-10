@@ -37,6 +37,7 @@ pub struct Config {
     pub(crate) enum_attributes: PathMap<String>,
     pub(crate) field_attributes: PathMap<String>,
     pub(crate) boxed: PathMap<()>,
+    pub(crate) arced: PathMap<()>,
     pub(crate) prost_types: bool,
     pub(crate) strip_enum_prefix: bool,
     pub(crate) out_dir: Option<PathBuf>,
@@ -372,6 +373,31 @@ impl Config {
         P: AsRef<str>,
     {
         self.boxed.insert(path.as_ref().to_string(), ());
+        self
+    }
+
+    /// Wrap matched fields in an `Arc`.
+    ///
+    /// Enables clone-on-write semantics using `Arc::make_mut`, which requires
+    /// `M: Clone`. Useful for large nested messages that are frequently shared
+    /// but rarely modified.
+    ///
+    /// # Arguments
+    ///
+    /// **`path`** - a path matching any number of fields. These fields get wrapped in Arc.
+    /// For details about matching fields see [`btree_map`](Self::btree_map).
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # let mut config = prost_build::Config::new();
+    /// config.arced(".my_messages.MyMessageType.my_field");
+    /// ```
+    pub fn arced<P>(&mut self, path: P) -> &mut Self
+    where
+        P: AsRef<str>,
+    {
+        self.arced.insert(path.as_ref().to_string(), ());
         self
     }
 
@@ -974,6 +1000,14 @@ impl Config {
                 err.kind(),
                 error_message_protoc_not_found()
             )),
+            Err(err) if ErrorKind::PermissionDenied == err.kind() && !self.protoc_executable.exists() => {
+                // On some systems (e.g., WSL2), trying to execute a non-existent file
+                // can result in PermissionDenied instead of NotFound
+                return Err(Error::new(
+                    ErrorKind::NotFound,
+                    error_message_protoc_not_found()
+                ))
+            },
             Err(err) => return Err(Error::new(
                 err.kind(),
                 format!("failed to invoke protoc (hint: https://docs.rs/prost-build/#sourcing-protoc): (path: {}): {}", &self.protoc_executable.display(), err),
@@ -1203,6 +1237,7 @@ impl default::Default for Config {
             enum_attributes: PathMap::default(),
             field_attributes: PathMap::default(),
             boxed: PathMap::default(),
+            arced: PathMap::default(),
             prost_types: true,
             strip_enum_prefix: true,
             out_dir: None,
@@ -1234,6 +1269,8 @@ impl fmt::Debug for Config {
             .field("bytes_type", &self.bytes_type)
             .field("type_attributes", &self.type_attributes)
             .field("field_attributes", &self.field_attributes)
+            .field("boxed", &self.boxed)
+            .field("arced", &self.arced)
             .field("prost_types", &self.prost_types)
             .field("strip_enum_prefix", &self.strip_enum_prefix)
             .field("out_dir", &self.out_dir)
