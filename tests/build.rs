@@ -93,6 +93,12 @@ fn main() {
         .unwrap();
 
     prost_build::Config::new()
+        .type_attribute("groups.NestedGroup", "#[allow(dead_code)]")
+        .type_attribute("groups.NestedGroup.OptionalGroup", "#[allow(dead_code)]")
+        .type_attribute("groups.NestedGroup.RequiredGroup", "#[allow(dead_code)]")
+        .type_attribute("groups.NestedGroup.RepeatedGroup", "#[allow(dead_code)]")
+        .type_attribute("groups.NestedGroup.G", "#[allow(dead_code)]")
+        .type_attribute("groups.NestedGroup.o", "#[allow(dead_code)]")
         .compile_protos(&[src.join("groups.proto")], includes)
         .unwrap();
 

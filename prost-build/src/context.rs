@@ -259,13 +259,11 @@ impl<'a> Context<'a> {
                 .boxed
                 .get_first_field(fq_message_name, field.name())
                 .is_some()
-            {
-                false
-            } else if self
-                .config
-                .arced
-                .get_first_field(fq_message_name, field.name())
-                .is_some()
+                || self
+                    .config
+                    .arced
+                    .get_first_field(fq_message_name, field.name())
+                    .is_some()
             {
                 false
             } else {
