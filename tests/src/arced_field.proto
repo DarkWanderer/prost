@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package arced_field;
+
+message Outer {
+  Inner inner = 1;
+  oneof oneof_field {
+    string text = 2;
+    Inner arc_inner = 3;
+  }
+  repeated Inner inner_list = 4;
+}
+
+message Inner {
+  string data = 1;
+  int32 value = 2;
+}

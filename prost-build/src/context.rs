@@ -179,6 +179,51 @@ impl<'a> Context<'a> {
         false
     }
 
+    /// Returns whether the Rust type for this message field needs to be `Arc<_>`.
+    ///
+    /// This can be explicitly configured with `Config::arced`.
+    /// Unlike Box, Arc wrapping is never automatic for recursive types.
+    pub fn should_arc_message_field(
+        &self,
+        fq_message_name: &str,
+        field: &FieldDescriptorProto,
+    ) -> bool {
+        self.should_arc_impl(fq_message_name, None, field)
+    }
+
+    /// Returns whether the Rust type for this field in the oneof needs to be `Arc<_>`.
+    ///
+    /// This can be explicitly configured with `Config::arced`.
+    pub fn should_arc_oneof_field(
+        &self,
+        fq_message_name: &str,
+        oneof_name: &str,
+        field: &FieldDescriptorProto,
+    ) -> bool {
+        self.should_arc_impl(fq_message_name, Some(oneof_name), field)
+    }
+
+    fn should_arc_impl(
+        &self,
+        fq_message_name: &str,
+        oneof: Option<&str>,
+        field: &FieldDescriptorProto,
+    ) -> bool {
+        // Repeated fields return false (Vec already heap-allocated)
+        if field.label() == Label::Repeated {
+            return false;
+        }
+        // Arc is only applied via explicit configuration (no auto-detection like Box)
+        let config_path = match oneof {
+            None => Cow::Borrowed(fq_message_name),
+            Some(oneof_name) => Cow::Owned(format!("{fq_message_name}.{oneof_name}")),
+        };
+        self.config
+            .arced
+            .get_first_field(&config_path, field.name())
+            .is_some()
+    }
+
     /// Returns `true` if this message can automatically derive Copy trait.
     pub fn can_message_derive_copy(&self, fq_message_name: &str) -> bool {
         assert_eq!(".", &fq_message_name[..1]);
@@ -214,6 +259,11 @@ impl<'a> Context<'a> {
                 .boxed
                 .get_first_field(fq_message_name, field.name())
                 .is_some()
+                || self
+                    .config
+                    .arced
+                    .get_first_field(fq_message_name, field.name())
+                    .is_some()
             {
                 false
             } else {

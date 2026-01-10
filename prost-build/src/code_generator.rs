@@ -422,13 +422,17 @@ impl<'b> CodeGenerator<'_, 'b> {
         let boxed = self
             .context
             .should_box_message_field(fq_message_name, &field.descriptor);
+        let arced = self
+            .context
+            .should_arc_message_field(fq_message_name, &field.descriptor);
         let ty = self.resolve_type(&field.descriptor, fq_message_name);
 
         debug!(
-            "    field: {:?}, type: {:?}, boxed: {}",
+            "    field: {:?}, type: {:?}, boxed: {}, arced: {}",
             field.descriptor.name(),
             ty,
-            boxed
+            boxed,
+            arced
         );
 
         self.append_doc(fq_message_name, Some(field.descriptor.name()));
@@ -474,6 +478,9 @@ impl<'b> CodeGenerator<'_, 'b> {
 
         if boxed {
             self.buf.push_str(", boxed");
+        }
+        if arced {
+            self.buf.push_str(", arced");
         }
         self.buf.push_str(", tag = \"");
         self.buf.push_str(&field.descriptor.number().to_string());
@@ -527,9 +534,12 @@ impl<'b> CodeGenerator<'_, 'b> {
         if boxed {
             self.buf
                 .push_str(&format!("{prost_path}::alloc::boxed::Box<"));
+        } else if arced {
+            self.buf
+                .push_str(&format!("{prost_path}::alloc::sync::Arc<"));
         }
         self.buf.push_str(&ty);
-        if boxed {
+        if boxed || arced {
             self.buf.push('>');
         }
         if repeated || optional {
@@ -676,16 +686,29 @@ impl<'b> CodeGenerator<'_, 'b> {
                 &field.descriptor,
             );
 
+            let arced = self.context.should_arc_oneof_field(
+                fq_message_name,
+                oneof.descriptor.name(),
+                &field.descriptor,
+            );
+
             debug!(
-                "    oneof: {:?}, type: {:?}, boxed: {}",
+                "    oneof: {:?}, type: {:?}, boxed: {}, arced: {}",
                 field.descriptor.name(),
                 ty,
-                boxed
+                boxed,
+                arced
             );
 
             if boxed {
                 self.buf.push_str(&format!(
                     "{}(::prost::alloc::boxed::Box<{}>),\n",
+                    to_upper_camel(field.descriptor.name()),
+                    ty
+                ));
+            } else if arced {
+                self.buf.push_str(&format!(
+                    "{}(::prost::alloc::sync::Arc<{}>),\n",
                     to_upper_camel(field.descriptor.name()),
                     ty
                 ));
