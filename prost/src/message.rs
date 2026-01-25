@@ -1,6 +1,8 @@
 #[cfg(not(feature = "std"))]
 use alloc::boxed::Box;
 #[cfg(not(feature = "std"))]
+use alloc::sync::Arc;
+#[cfg(not(feature = "std"))]
 use alloc::vec::Vec;
 
 use bytes::{Buf, BufMut};
@@ -174,6 +176,33 @@ where
     }
     fn clear(&mut self) {
         (**self).clear()
+    }
+}
+
+#[cfg(feature = "std")]
+use std::sync::Arc;
+
+impl<M> Message for Arc<M>
+where
+    M: Message + Clone,
+{
+    fn encode_raw(&self, buf: &mut impl BufMut) {
+        (**self).encode_raw(buf)
+    }
+    fn merge_field(
+        &mut self,
+        tag: u32,
+        wire_type: WireType,
+        buf: &mut impl Buf,
+        ctx: DecodeContext,
+    ) -> Result<(), DecodeError> {
+        Arc::make_mut(self).merge_field(tag, wire_type, buf, ctx)
+    }
+    fn encoded_len(&self) -> usize {
+        (**self).encoded_len()
+    }
+    fn clear(&mut self) {
+        Arc::make_mut(self).clear()
     }
 }
 

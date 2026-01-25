@@ -93,6 +93,12 @@ fn main() {
         .unwrap();
 
     prost_build::Config::new()
+        .type_attribute("groups.NestedGroup", "#[allow(dead_code)]")
+        .type_attribute("groups.NestedGroup.OptionalGroup", "#[allow(dead_code)]")
+        .type_attribute("groups.NestedGroup.RequiredGroup", "#[allow(dead_code)]")
+        .type_attribute("groups.NestedGroup.RepeatedGroup", "#[allow(dead_code)]")
+        .type_attribute("groups.NestedGroup.G", "#[allow(dead_code)]")
+        .type_attribute("groups.NestedGroup.o", "#[allow(dead_code)]")
         .compile_protos(&[src.join("groups.proto")], includes)
         .unwrap();
 
@@ -175,6 +181,12 @@ fn main() {
         .boxed("Foo.oneof_field.box_qux")
         .boxed("Foo.boxed_bar_list")
         .compile_protos(&[src.join("boxed_field.proto")], includes)
+        .unwrap();
+
+    prost_build::Config::new()
+        .arced("Outer.inner")
+        .arced("Outer.oneof_field.arc_inner")
+        .compile_protos(&[src.join("arced_field.proto")], includes)
         .unwrap();
 
     prost_build::Config::new()
